@@ -1,0 +1,26 @@
+onscroll change header color
+Wallpaper Color
+onscroll change header color - variable screen
+onscroll change header color - edit groups screen
+fontfamily bold version for title
+theme icon
+notes styling to vaaribale group
+on scroll delay
+material you swtich
+notes styling to bin
+settings header change
+bold content
+bold title
+title and content seprate fontsize
+fontdialog change
+empty list comp update aesthetics
+------------------------complete-----------------------
+sorting alphabetically
+------------------------Working------------------------
+notes variable height - settings
+select multiple notes - notes screens
+Notifier on time - settings
+Date picker Bin - settings
+add drawing canvas in notes - createnote, notes
+
+

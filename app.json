@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "My Notes",
+    "slug": "MyNotes",
+    "version": "1.2.4",
+    "orientation": "portrait",
+    "icon": "./assets/Frame.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splashsc.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Frame.png",
+        "backgroundColor": "#ffffff",
+        "monochromeImage": "./assets/FrameMono.png"
+      },
+      "package": "com.crystalarcus.MyNotes"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2183d8dc-92a6-47f1-af0a-c40813dd869e"
+      }
+    }
+  }
+}
