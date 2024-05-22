@@ -2,12 +2,12 @@
   "expo": {
     "name": "My Notes",
     "slug": "MyNotes",
-    "version": "1.2.4",
+    "version": "1.4.9",
     "orientation": "portrait",
-    "icon": "./assets/Frame.png",
+    "icon": "./assets/gicon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splashsc.png",
+      "image": "./assets/gsplash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -19,10 +19,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/Frame.png",
+        "foregroundImage": "./assets/gicon.png",
         "backgroundColor": "#ffffff",
-        "monochromeImage": "./assets/FrameMono.png"
+        "monochromeImage": "./assets/giconmono.png"
       },
+      "softwareKeyboardLayoutMode": "pan",
       "package": "com.crystalarcus.MyNotes"
     },
     "web": {
@@ -32,6 +33,22 @@
       "eas": {
         "projectId": "2183d8dc-92a6-47f1-af0a-c40813dd869e"
       }
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ]
+    ]
   }
 }

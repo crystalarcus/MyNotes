@@ -1,238 +1,27 @@
-import { IconButton, Text, Surface, Portal, Dialog, RadioButton, Button, useTheme, List, Appbar, Divider, Icon, Snackbar, SegmentedButtons } from "react-native-paper";
-import { BackHandler, ScrollView, StyleSheet, View } from "react-native";
-import { useState, useContext, useEffect } from "react";
+import { IconButton, Text, Portal, Dialog, RadioButton, Button, useTheme, List, Appbar, Divider, Snackbar, SegmentedButtons } from "react-native-paper";
+import { BackHandler, Platform, ScrollView, StyleSheet, View } from "react-native";
+import { useState, useContext, useEffect, useRef } from "react";
 import { AppContext } from "../AppContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TimePickerDialog } from "./SubComponents/DatePickerDialog";
 import { isDynamicThemeSupported, useMaterial3Theme } from "@pchmn/expo-material3-theme";
-import Animated, { Extrapolation, interpolate, interpolateColor, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
-import { MaterialSwitch } from "./SubComponents/MaterialSwitch";
+import Animated, { Easing, Extrapolation, SharedTransition, interpolate, interpolateColor, runOnJS, scrollTo, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 import { throttle } from "lodash";
+import { AnimatedDialog } from "./SubComponents/AnimatedDialog";
+import { MaterialSwitchListItem } from "./SubComponents/MaterialSwitchListItem";
+import { BinDeletionTimeDialog, ColorDialog, SortDialog, ThemeDialog } from "./SubComponents/SettingsDialog";
 
+// import { setAppIcon } from "expo-dynamic-app-icon";
 
-//#region 
-const ThemeDialog = ({ themeDialogvisible, setThemeDialogvisible,
-    appTheme, setAppTheme }) => {
-
-    const [checked, setChecked] = useState(appTheme);
-    async function saveSettings(themeValue) {
-        await AsyncStorage.setItem('@appTheme', themeValue);
-    }
-    const Comp = ({ title, name }) => {
-        return (
-            <List.Item title={title}
-                titleStyle={{ fontSize: 19 }}
-                onPress={() => {
-                    setAppTheme(name)
-                    saveSettings(name);
-                    setChecked(name);
-                }}
-                style={{ paddingHorizontal: 19, paddingVertical: 0 }}
-                left={() =>
-                    <RadioButton value={name}
-                        status={checked === name ? 'checked' : 'unchecked'}
-                        onPress={() => {
-                            setAppTheme(name)
-                            saveSettings(name);
-                            setChecked(name);
-                        }}></RadioButton>}>
-            </List.Item>
-        )
-    }
-    return (
-        <Dialog visible={themeDialogvisible}
-            onDismiss={() => { setThemeDialogvisible(false) }}>
-            <Dialog.Title>Choose Theme</Dialog.Title>
-            <Dialog.Content
-                style={{ paddingHorizontal: 0 }}
-            >
-                <View style={{ display: 'flex', flexDirection: 'column' }}>
-                    <Comp name={"system"} title={"System default"} />
-                    <Comp name={"light"} title={"Light"} />
-                    <Comp name={"dark"} title={"Dark"} />
-                </View>
-            </Dialog.Content>
-            <Dialog.Actions>
-                <Button onPress={() => { setThemeDialogvisible(false) }}>Done</Button>
-            </Dialog.Actions>
-        </Dialog>
-    );
-}
-const SortDialog = ({ visible, setVisible, data,
-    sortOrder, setSortOrder }) => {
-
-    const [checked, setChecked] = useState(sortOrder);
-    const [value, setValue] = useState(sortOrder < 3 ? "time" : "alphabetical");
-
-    const Comp = ({ title, order, disabled }) => {
-        const onItemPress = async () => {
-            switch (order) {
-                case 1:
-                    data.sort((a, b) => { return b.key - a.key });
-                    break;
-                case 2:
-                    data.sort((a, b) => { return a.key - b.key });
-                    break;
-                case 3:
-                    data.sort((a, b) => a.title.localeCompare(b.title));
-                    break;
-                case 4:
-                    data.sort((a, b) => b.title.localeCompare(a.title));
-                    break;
-                default:
-                    break;
-            }
-            setChecked(order);
-            setSortOrder(order);
-            await AsyncStorage.setItem("data", JSON.stringify(data));
-            await AsyncStorage.setItem("@sortOrder", JSON.stringify(order));
-        }
-        return (
-            <List.Item title={title} disabled={disabled}
-                titleStyle={{ fontSize: 19 }}
-                onPress={() => onItemPress()}
-                style={{ paddingHorizontal: 19, paddingVertical: 0 }}
-                left={() =>
-                    <RadioButton value={order}
-                        status={checked == order ? 'checked' : 'unchecked'}
-                        onPress={() => onItemPress()}></RadioButton>}>
-            </List.Item>
-        )
-    }
-    return (
-        <Dialog visible={visible}
-            onDismiss={() => { setVisible(false) }}>
-            <Dialog.Title>Choose Sort Order</Dialog.Title>
-            <Dialog.Content
-                style={{ paddingHorizontal: 0 }}>
-                <View style={{ display: 'flex', flexDirection: 'column' }}>
-                    <SegmentedButtons value={value} style={{ paddingHorizontal: 19 }}
-                        onValueChange={setValue}
-                        buttons={[
-                            {
-                                value: 'time',
-                                label: 'Time',
-                                onPress: () => setValue('time')
-                            },
-                            {
-                                value: 'alphabetical',
-                                label: 'Alphabetical',
-                                onPress: () => setValue('alphabetical')
-                            }
-                        ]} />
-
-                    <List.Section title="Sort by name">
-                        <Comp title={"Ascending"} order={value == "time" ? 1 : 3} />
-                        <Comp title={"Descending"} order={value == "time" ? 2 : 4} />
-                    </List.Section>
-                </View>
-            </Dialog.Content>
-            <Dialog.Actions>
-                <Button onPress={() => { setVisible(false) }}>Done</Button>
-            </Dialog.Actions>
-        </Dialog>
-    );
-}
-
-const ColorButton = ({ color, setThisColor, setAccentColor, setColorDialogvisible, setColorSnackVisible }) => {
-    async function saveColor(colorVal) {
-        setAccentColor("dynamic");
-        await AsyncStorage.setItem('@accentColor', colorVal);
-    }
-    return (
-        <IconButton onPress={() => {
-            setColorDialogvisible(false);
-            setThisColor(color);
-            saveColor(color);
-            setColorSnackVisible(true);
-        }}
-            style={{
-                width: 40,
-                height: 40,
-                backgroundColor: color,
-                borderRadius: 30,
-            }}>
-        </IconButton>
-    );
-}
-
-const ColorDialog = ({ colorDialogvisible, setColorDialogvisible, UpdateThemeTo, setAccentColor, setColorSnackVisible }) => {
-    const thisTheme = useTheme();
-    const { theme } = useMaterial3Theme();
-    const onUseSystemButtonPress = async () => {
-        UpdateThemeTo(theme.light.primary);
-        setAccentColor("dynamic");
-        await AsyncStorage.setItem('@accentColor', "dynamic")
-    }
-    return (
-        <Dialog visible={colorDialogvisible}
-            onDismiss={() => setColorDialogvisible(false)}>
-            <Dialog.Title>Choose Accent Color</Dialog.Title>
-            <Dialog.Content style={{ paddingHorizontal: 0 }} >
-                <GestureHandlerRootView>
-                    <ScrollView>
-                        <View style={{ padding: 19, flexDirection: 'column', }}>
-                            <Text variant="bodyLarge" style={{ alignSelf: 'baseline', fontSize: 19 }}>System Color</Text>
-                            {isDynamicThemeSupported ?
-                                <View style={{ paddingVertical: 15, flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
-                                    <Text variant="bodyMedium">Use Color Palatte used by your device.</Text>
-                                    <Button mode="contained" disabled={!isDynamicThemeSupported}
-                                        theme={{ colors: { primary: theme.dark.primary } }}
-                                        style={{ paddingVertical: 4, paddingHorizontal: 12 }}
-                                        onPress={() => onUseSystemButtonPress()}>Apply</Button>
-                                </View> :
-
-                                <List.Item title={"Device not supported"} style={{
-                                    paddingLeft: 15,
-                                    marginTop: 20,
-                                    backgroundColor: thisTheme.colors.outlineVariant,
-                                    borderRadius: 15,
-                                }}
-                                    left={() => <List.Icon icon={"information-outline"} />}
-                                    description={"This option is not supported on your Device."} />
-
-                            }
-                        </View>
-                        <View style={{ padding: 19, paddingBottom: 5, gap: 15 }}>
-                            <Text variant="titleLarge" style={{ fontSize: 19 }}>Custom Color</Text>
-                            <View style={{
-                                flexDirection: 'row', gap: 15, alignItems: 'flex-start',
-                                flexWrap: 'wrap',
-                            }}>
-                                {/* <ColorButton color='#9c4237' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} /> */}
-                                {/* <ColorButton color='#00668B' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} /> */}
-                                <ColorButton color='#EA9389' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} setColorSnackVisible={setColorSnackVisible} setColorDialogvisible={setColorDialogvisible} />
-                                <ColorButton color='#DBA430' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} setColorSnackVisible={setColorSnackVisible} setColorDialogvisible={setColorDialogvisible} />
-                                {/* <ColorButton color='#B9AE21' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} setColorSnackVisible={setColorSnackVisible} setColorDialogvisible={setColorDialogvisible} /> */}
-                                <ColorButton color='#46C51E' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} setColorSnackVisible={setColorSnackVisible} setColorDialogvisible={setColorDialogvisible} />
-                                <ColorButton color='#22BEB3' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} setColorSnackVisible={setColorSnackVisible} setColorDialogvisible={setColorDialogvisible} />
-                                <ColorButton color='#7BAFE8' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} setColorSnackVisible={setColorSnackVisible} setColorDialogvisible={setColorDialogvisible} />
-                                <ColorButton color='#CA96EB' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} setColorSnackVisible={setColorSnackVisible} setColorDialogvisible={setColorDialogvisible} />
-                                <ColorButton color='#EB8BCA' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} setColorSnackVisible={setColorSnackVisible} setColorDialogvisible={setColorDialogvisible} />
-                                {/* <ColorButton color='#6750A4' setThisColor={UpdateThemeTo} setAccentColor={setAccentColor} /> */}
-                                {/* <IconButton icon='plus' onPress={() => {
-                                }} mode="contained"></IconButton> */}
-                            </View>
-                        </View>
-                    </ScrollView>
-                </GestureHandlerRootView>
-            </Dialog.Content>
-            <Dialog.Actions>
-                <Button onPress={() => setColorDialogvisible(false)}>Done</Button>
-            </Dialog.Actions>
-        </Dialog >
-    );
-}
-
-//#endregion
 
 export function Setting({ navigation, route }) {
 
+    //#region 
     // Variables-------------
     const theme = useTheme(); // import Material Theme from parent
     const previous_screen = route.params.previous_screen;
-    const { setActiveScreen } = useContext(AppContext);
+    const [touchable, setTouchable] = useState(false);
+
     const ScrollY = useSharedValue(0);
     const AnimatedHeaderTitleStyle = useAnimatedStyle(() => ({
         opacity: interpolate(
@@ -246,9 +35,12 @@ export function Setting({ navigation, route }) {
         backgroundColor: interpolateColor(
             ScrollY.value,
             [45, 50],
-            [theme.colors.surfaceContainerLowest, theme.colors.surfaceContainer],
+            [theme.dark ? theme.colors.surfaceContainerLowest :
+                theme.colors.elevation.level1, theme.dark ?
+                theme.colors.surfaceContainer : theme.colors.elevation.level3],
         ),
-        height: 90,
+        // alignItems:'center',
+        justifyContent: 'center'
     }))
     const AnimatedTitleStyle = useAnimatedStyle(() => ({
         opacity: interpolate(
@@ -257,35 +49,69 @@ export function Setting({ navigation, route }) {
             [1, 0],
             Extrapolation.CLAMP
         ),
-        paddingTop: 30,
+        paddingTop: 20,
         paddingBottom: 15,
         paddingHorizontal: 19
 
     }))
-    const scrollHandler = useAnimatedScrollHandler((event) => {
-        ScrollY.value = event.contentOffset.y;
-    });
+    const scrollViewRef = useAnimatedRef();
+
+    const scrollHandler = useAnimatedScrollHandler(
+        {
+            onEndDrag: () => {
+                if (ScrollY.value < 70 && ScrollY.value > 45) {
+                    scrollTo(
+                        scrollViewRef,
+                        0,
+                        70,
+                        true
+                    );
+                }
+                else if (ScrollY.value < 45 && ScrollY.value > 0) {
+                    scrollTo(
+                        scrollViewRef,
+                        0,
+                        0,
+                        true
+                    );
+                }
+            },
+            onScroll: (event) => {
+                ScrollY.value = event.contentOffset.y;
+            }
+        }
+    );
     // settings:
     const { data,
-        appTheme, UpdateThemeTo, setAppTheme,
+        appTheme,
+        setAppTheme,
+        UpdateThemeTo,
+        accentColor,
         setAccentColor,
+        noteTemplate,
         setTitleFontSize,
         setContentFontSize,
         setTitleFontFamily,
         setContentFontFamily,
         setTitleBold,
         setContentBold,
-        showNoteBorder, setShowNoteBorder,
+        setShowNoteBorder,
+        setColoredNote,
         sortOrder, setSortOrder,
-        shallBinDelete, setShallBinDelete } = useContext(AppContext);
+        shallBinDelete, setShallBinDelete,
+        binDeletionTime, setBinDeletionTime,
+        binDeletionTimeUnit, setBinDeletionTimeUnit,
+        askBeforeDeleting, setAskBeforeDeleting,
+        setActiveScreen } = useContext(AppContext);
 
     const [themeDialogvisible, setThemeDialogvisible] = useState(false); // Theme Dialog
     const [colorDialogvisible, setColorDialogvisible] = useState(false); // Color Dialog
+    const [binDeletionDialogVisible, setBinDeletionDialogvisible] = useState(false); // Color Dialog
 
     const [sortDialogVisible, setSortDialogVisible] = useState(false); // SortNote Menu
-    const [timePickerVisible, setTimePickerVisible] = useState(false); // TimePicker Dialog Bin
     const [colorSnackVisible, setColorSnackVisible] = useState(false); // Accent Color Source Color Not Notif SnackBar
-    const [snackbarText, setSnackBarText] = useState('');
+    //#endregion
+
     // Funtions-------------
     function capitalize(s) {
         return s[0].toUpperCase() + s.slice(1);
@@ -294,83 +120,129 @@ export function Setting({ navigation, route }) {
     const setSettingsToDefault = async () => {
         setAppTheme('system');
         setAccentColor('#EA9389');
-        setTitleFontSize(110);
-        setContentFontSize(110);
+        setTitleFontSize(125);
+        setContentFontSize(85);
         setTitleFontFamily('Roboto');
         setContentFontFamily('Roboto')
-        setTitleBold(true);
+        setTitleBold(false);
         setContentBold(false);
+        setColoredNote(true);
+        setShowNoteBorder(false);
         setSortOrder(1);
         UpdateThemeTo('#EA9389');
-        setShowNoteBorder(true);
         await AsyncStorage.setItem('@appTheme', 'system');
-        await AsyncStorage.setItem('@titleFontSize', '100');
-        await AsyncStorage.setItem('@contentFontSize', '100');
+        await AsyncStorage.setItem('@titleFontSize', '125');
+        await AsyncStorage.setItem('@contentFontSize', '85');
         await AsyncStorage.setItem('@accentColor', '#EA9389');
-        await AsyncStorage.setItem('@titleFontFamily', 'Roboto');
-        await AsyncStorage.setItem('@contentFontFamily', 'Roboto');
+        await AsyncStorage.setItem('@titleFontFamily', 'Manrope');
+        await AsyncStorage.setItem('@contentFontFamily', 'Manrope');
         await AsyncStorage.setItem('@sortOrder', '1');
-        await AsyncStorage.setItem('@showNoteBorder', 'true');
-        await AsyncStorage.setItem('@titleBold', 'true');
+        await AsyncStorage.setItem('@coloredNote', 'true');
+        await AsyncStorage.setItem('@showNoteBorder', 'false');
+        await AsyncStorage.setItem('@titleBold', 'false');
         await AsyncStorage.setItem('@contentBold', 'false');
     }
+    const [visible, setVisible] = useState(true)
 
     function handleGoBack() {
+        setVisible(false)
+        return true;
+    }
+    const callbackF = () => {
         navigation.goBack();
         setActiveScreen(previous_screen);
-        return true;
+    }
+    const enteringAnim = () => {
+        'worklet';
+        const animations = {
+            transform: [{ scale: withTiming(1, { duration: 400, easing: Easing.bezier(0.05, 0.7, 0.1, 1) }) }],
+            opacity: withTiming(1, { duration: 40 })
+        }
+        const initialValues = {
+            transform: [{ scale: 0.5 }],
+            opacity: 0,
+        }
+        return {
+            initialValues,
+            animations
+        }
+    }
+    const exitingAnim = () => {
+        'worklet';
+        const animations = {
+            transform: [
+                { scale: withTiming(0.8, { duration: 300, easing: Easing.bezier(0.3, 0, 0.8, 0.15) }) },
+            ],
+            opacity: withDelay(100, withTiming(0, { duration: 200 }))
+        }
+        const initialValues = {
+            transform: [{ scale: 1 }],
+            opacity: 1
+        }
+        const callback = (finished) => {
+            'worklet';
+            if (finished) {
+                runOnJS(callbackF)()
+            }
+        }
+        return {
+            initialValues,
+            animations,
+            callback
+        }
     }
     useEffect(() => {
         BackHandler.addEventListener('hardwareBackPress', handleGoBack);
         return () => BackHandler.removeEventListener('hardwareBackPress', handleGoBack);
     }, []);
     return (
-        <Surface elevation={1} style={{ flex: 1, backgroundColor: theme.colors.surfaceContainerLowest }}>
-            <Animated.View style={AnimatedHeaderStyle}>
+        visible ? < Animated.View style={{ flex: 1, backgroundColor: theme.dark ? theme.colors.surfaceContainerLowest : theme.colors.elevation.level1 }}
+            entering={enteringAnim} exiting={exitingAnim} >
+            {/* <Surface elevation={1} style={{ flex: 1, backgroundColor: theme.dark ? theme.colors.surfaceContainerLowest : theme.colors.elevation.level1 }}> */}
+
+            < Animated.View style={AnimatedHeaderStyle} >
                 <Appbar.Header style={{ backgroundColor: "transparent" }}>
                     <Appbar.BackAction onPress={throttle(() => {
-                        setActiveScreen(previous_screen);
-                        navigation.goBack();
-                    }, 200, { trailing: false })} />
+                        Platform.OS == 'web' ? callbackF() :
+                            setVisible(false);
+                    }, 2000, { trailing: false })} />
                     <Appbar.Content title={
                         <Animated.View style={AnimatedHeaderTitleStyle}>
                             <Text variant="titleLarge"
                                 numberOfLines={1}
                                 accessible
+                                style={{ fontFamily: 'Manrope' }}
                                 accessibilityRole="header">Settings</Text>
                         </Animated.View>
                     } style={{ paddingLeft: 10 }} />
                 </Appbar.Header>
-            </Animated.View>
+            </Animated.View >
 
             <Animated.ScrollView
+                ref={scrollViewRef}
                 scrollEventThrottle={16}
                 onScroll={scrollHandler}>
                 {/* Seccond AppBarTitle */}
                 <Animated.View style={AnimatedTitleStyle}>
-                    <Text variant='headlineMedium'>Settings</Text>
+                    <Text variant='headlineMedium' style={{ fontFamily: 'Manrope' }}>Settings</Text>
                 </Animated.View>
                 <List.Section title="Appearance"
                     titleStyle={styles.sectionHeaderStyle}>
                     <List.Item title='Theme'
-                        unstable_pressDelay={55}
+                        unstable_pressDelay={30}
                         titleStyle={styles.titleStyle}
-                        right={() =>
-                            <View style={{justifyContent:'center'}}>
-                                <Text 
-                                    style={{ paddingVertical: 'auto', fontSize:18 }}>
-                                    {capitalize(appTheme)}</Text>
-                            </View>
-                        }
-                        description={"Theme mode of app"}
-                        style={{ paddingHorizontal: 25, paddingVertical: 12, justifyContent: 'center' }}
-                        left={() => <List.Icon icon={appTheme == "system" ? "brightness-4" :
+                        description={capitalize(appTheme)}
+                        style={{ paddingLeft: 25, paddingRight: 12, paddingVertical: 12, justifyContent: 'center' }}
+                        left={() => <List.Icon style={{ paddingRight: 8 }} icon={appTheme == "system" ? "brightness-4" :
                             appTheme == "light" ? "white-balance-sunny" : 'brightness-2'} />}
-                        onPress={() => setThemeDialogvisible(true)} />
+                        onPress={() => {
+                            setTouchable(true)
+                            setThemeDialogvisible(true)
+                        }} />
                     <List.Item title='Accent Color'
                         unstable_pressDelay={55}
                         titleStyle={styles.titleStyle}
-                        description='Source color of your app'
+                        description={accentColor == 'dynamic' ? 'Using system color' : 'Using custom color'}
                         right={() =>
                             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                                 <View style={{
@@ -380,82 +252,103 @@ export function Setting({ navigation, route }) {
                                 }}></View>
                             </View>
                         }
-                        style={{ paddingHorizontal: 25, paddingVertical: 12, justifyContent: 'center' }}
-                        left={() => <List.Icon icon='palette-outline' />}
-                        onPress={() => setColorDialogvisible(true)} />
+                        style={styles.ListItemStyle}
+                        left={() => <List.Icon style={{ paddingRight: 8 }} icon='palette-outline' />}
+                        onPress={() => {
+                            setTouchable(true)
+                            setColorDialogvisible(true)
+                        }} />
+
+                    <List.Item title='Note Settings'
+                        description="Note Template and Personalization"
+                        onPress={() => {
+                            navigation.navigate('NoteType', { noteTemplate: noteTemplate })
+                        }}
+                        left={() => <List.Icon style={{ paddingRight: 8 }} icon={"text-box-outline"} />}
+                        style={styles.ListItemStyle} />
 
                     <List.Item title="Font Styling"
                         titleStyle={styles.titleStyle}
                         description="Font styling for notes"
-                        onPress={() => navigation.navigate('SettingsFonts')}
-                        left={() => <List.Icon icon={"format-text-variant-outline"} />}
-                        style={{ paddingHorizontal: 25, paddingVertical: 12, justifyContent: 'center' }} />
+                        onPress={() => {
+                            navigation.navigate('SettingsFonts');
 
-                    <List.Item title='Note Border' unstable_pressDelay={55}
-                        description="Border around note"
-                        titleStyle={styles.titleStyle}
-                        style={{ paddingHorizontal: 25, paddingVertical: 12, justifyContent: 'center' }}
-                        left={() =>
-                            <List.Icon
-                                icon={() => <List.Icon icon={'border-outside'} />}
-                            />}
-                        onPress={async () => {
-                            await AsyncStorage.setItem('@showNoteBorder', JSON.stringify(!showNoteBorder));
-                            setShowNoteBorder(!showNoteBorder);
                         }}
-                        right={() =>
-                            <MaterialSwitch selected={showNoteBorder} icon={"check"}
-                                onPress={async () => {
-                                    await AsyncStorage.setItem('@showNoteBorder', JSON.stringify(!showNoteBorder));
-                                    setShowNoteBorder(!showNoteBorder);
-                                }} />
-                        } />
+                        left={() => <List.Icon style={{ paddingRight: 8 }} icon={"format-text-variant-outline"} />}
+                        style={styles.ListItemStyle} />
+
                 </List.Section>
-                <Divider></Divider>
+                {/* <Divider></Divider> */}
                 <List.Section title="Behaviour"
                     titleStyle={styles.sectionHeaderStyle}>
 
                     <List.Item title='Sorting Order' titleStyle={styles.titleStyle}
                         unstable_pressDelay={55}
                         description={
-                            sortOrder == 1 ? "New to old" :
-                                sortOrder == 2 ? "Old to new" :
-                                    sortOrder == 3 ? "A to Z" :
-                                        "Z to A"
+                            sortOrder == 1 ? "Time ● Ascending" :
+                                sortOrder == 2 ? "Time ● Descending" :
+                                    sortOrder == 3 ? "Alphabetical ● Ascending" :
+                                        "Alphabetical ● Descending"
                         }
                         onPress={() => {
+                            setTouchable(true)
                             setSortDialogVisible(true)
                         }}
                         style={{ paddingHorizontal: 25, height: 80, paddingRight: 10 }}
-                        left={() => <List.Icon icon='arrow-up-down' />} />
+                        left={() => <List.Icon style={{ paddingRight: 8 }} icon='arrow-up-down' />} />
 
-                    <List.Item title='Auto Empty Bin'
-                        unstable_pressDelay={55}
+                    <MaterialSwitchListItem title='Ask before Deleting'
+                        description={"Show dialog to confirm before moving note to bin"}
+                        leftIcon='alert-circle-check-outline'
+                        fluid={true}
                         titleStyle={styles.titleStyle}
-                        // description="Delete notes in bin after specified time bellow"
-                        style={{ paddingHorizontal: 25, paddingVertical: 12, justifyContent: 'center' }}
-                        left={() => <List.Icon icon='delete-outline' />}
+                        listStyle={styles.ListItemStyle}
+                        selected={askBeforeDeleting}
+                        onPress={async () => {
+                            await AsyncStorage.setItem('@askBeforeDeleting', JSON.stringify(!askBeforeDeleting));
+                            setAskBeforeDeleting(!askBeforeDeleting);
+                        }} />
+                    <MaterialSwitchListItem title='Auto Delete'
+                        description={"Auto delete notes in bin"}
+                        leftIcon='delete-clock-outline'
+                        fluid={true}
+                        titleStyle={styles.titleStyle}
+                        listStyle={styles.ListItemStyle}
+                        selected={shallBinDelete}
                         onPress={async () => {
                             await AsyncStorage.setItem('@shallBinDelete', JSON.stringify(!shallBinDelete));
                             setShallBinDelete(!shallBinDelete);
-                        }}
-                        right={() =>
-                            <MaterialSwitch selected={shallBinDelete}
-                                onPress={async () => {
-                                    setShallBinDelete(!shallBinDelete);
-                                    await AsyncStorage.setItem('@shallBinDelete', JSON.stringify(!shallBinDelete));
-                                }} />} />
+                        }} />
                     <List.Item
-                        title='Bin Deletion Time'
-                        onPress={() => { setTimePickerVisible(true) }}
+                        title='Auto Delete Time'
+                        description={shallBinDelete ?
+                            binDeletionTime.toString() + " " + binDeletionTimeUnit :
+                            "*Turn on Auto Delete to enable this"}
+                        onPress={() => {
+                            setTouchable(true)
+                            setBinDeletionDialogvisible(true)
+                        }}
+                        disabled={!shallBinDelete}
                         unstable_pressDelay={55}
-                        titleStyle={styles.titleStyle}
-                        // description="Delete Note in Bin after this time."
-                        style={{ paddingHorizontal: 25, paddingVertical: 12, justifyContent: 'center' }}
-                        left={() => <List.Icon icon='clock-outline' />}
-                        right={() => <Text>{"134 hours"}</Text>} />
-                    <TimePickerDialog visible={timePickerVisible} setVisible={setTimePickerVisible} />
-
+                        titleStyle={[styles.titleStyle, {
+                            color: shallBinDelete ?
+                                theme.colors.onSurface :
+                                theme.colors.onSurfaceDisabled
+                        }]}
+                        descriptionStyle={{
+                            color: shallBinDelete ?
+                                theme.colors.onSurface :
+                                theme.colors.onSurfaceDisabled
+                        }}
+                        style={styles.ListItemStyle}
+                        left={() =>
+                            <List.Icon style={{ paddingRight: 8 }}
+                                color={shallBinDelete ?
+                                    theme.colors.onSurface :
+                                    theme.colors.onSurfaceDisabled}
+                                icon='clock-outline' />}
+                    />
+                    {/* <TimePickerDialog visible={datePickerVisible} setVisible={setDatePickerVisible} /> */}
                 </List.Section>
                 <Divider></Divider>
                 <List.Section>
@@ -463,30 +356,50 @@ export function Setting({ navigation, route }) {
                         unstable_pressDelay={55}
                         titleStyle={styles.titleStyle}
                         description='Set all Settings to default.'
-                        style={{ paddingHorizontal: 25, paddingVertical: 12, justifyContent: 'center' }}
-                        left={() => <List.Icon icon='cog-refresh' />}
+                        style={styles.ListItemStyle}
+                        left={() => <List.Icon style={{ paddingRight: 8 }} icon='cog-refresh' />}
                         onPress={() => setSettingsToDefault()}></List.Item>
                 </List.Section>
                 {/* <Text>Note : this screen is still under development, nothing here works.</Text> */}
 
                 <Portal>
                     <ThemeDialog themeDialogvisible={themeDialogvisible}
+                        thisTheme={theme}
                         appTheme={appTheme} setAppTheme={setAppTheme}
-                        setThemeDialogvisible={setThemeDialogvisible} />
+                        setThemeDialogvisible={setThemeDialogvisible}
+                        touchable={touchable} setTouchable={setTouchable} />
                     <SortDialog visible={sortDialogVisible} data={data}
+                        thisTheme={theme}
                         sortOrder={sortOrder} setSortOrder={setSortOrder}
-                        setVisible={setSortDialogVisible} />
+                        setVisible={setSortDialogVisible}
+                        touchable={touchable}
+                        setTouchable={setTouchable}
+                    />
 
                     <ColorDialog colorDialogvisible={colorDialogvisible}
                         colorSnackVisible={colorSnackVisible}
                         setColorSnackVisible={setColorSnackVisible}
                         setColorDialogvisible={setColorDialogvisible}
                         UpdateThemeTo={UpdateThemeTo}
-                        setAccentColor={setAccentColor}>
+                        setAccentColor={setAccentColor}
+                        touchable={touchable}
+                        setTouchable={setTouchable}
+                        thisTheme={theme} >
                     </ColorDialog>
 
+                    <BinDeletionTimeDialog dialogvisible={binDeletionDialogVisible}
+                        setdialogvisible={setBinDeletionDialogvisible}
+                        touchable={touchable}
+                        setTouchable={setTouchable}
+                        binDeletionTime={binDeletionTime}
+                        setBinDeletionTime={setBinDeletionTime}
+                        binDeletionTimeUnit={binDeletionTimeUnit}
+                        setBinDeletionTimeUnit={setBinDeletionTimeUnit}
+                        thisTheme={theme} />
+                    {/* <DatePickerDialog datePickerVisible={datePickerVisible} setDatePickerVisible={setDatePickerVisible} /> */}
+
                     <Snackbar visible={colorSnackVisible}
-                        duration={0.5}
+                        duration={2500}
                         onDismiss={() => setColorSnackVisible(false)}
                         action={{
                             label: 'OK',
@@ -494,25 +407,34 @@ export function Setting({ navigation, route }) {
                                 setColorSnackVisible(false);
                             }
                         }}>Accent color changed</Snackbar>
+
                 </Portal>
             </Animated.ScrollView>
-        </Surface >
-
+            {/* </Surface > */}
+        </Animated.View > : null
     );
 }
 
 const styles = StyleSheet.create({
+    sectionHeaderStyle: {
+        fontFamily: 'Manrope-SemiBold'
+    },
+    segBtn: {
+        paddingHorizontal: 0,
+        borderWidth: 1.3
+    },
     titleStyle: {
         fontSize: 17,
-        // fontFamily: 'OpenSans',
-
+        fontFamily: 'Manrope',
     },
-    sectionHeaderStyle: {
-        // fontSize: 15,
-        // fontWeight: '100'
+    ListItemStyle: {
+        paddingHorizontal: 25,
+        paddingVertical: 15,
+        justifyContent: 'center'
     }
 
 });
+//#region 
 // Async Storage settings names:
 // Theme : @appTheme
 // Color : @accentColor
@@ -522,3 +444,16 @@ const styles = StyleSheet.create({
 // Show Border : @showNoteBorder
 // Add From Bottom: @addNoteFromBottom
 // Delete Note in Bin : @shallBinDelete
+
+{/* <MaterialSwitchListItem title='Compact View'
+                        description={"Smaller notes with two\ncolumns"}
+                        fluid={true}
+                        titleStyle={styles.titleStyle}
+                        listStyle={styles.ListItemStyle}
+                        leftIcon={"border-outside"}
+                        selected={isCompact}
+                        onPress={async () => {
+                            await AsyncStorage.setItem('@isCompact', JSON.stringify(!isCompact));
+                            setIsCompact(!isCompact);
+                        }} /> */}
+//#endregion

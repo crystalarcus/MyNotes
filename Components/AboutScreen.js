@@ -1,31 +1,17 @@
-import { Appbar, Button, List, Surface, Text, Title, useTheme } from "react-native-paper";
+import { Appbar, Button, List, Text, useTheme } from "react-native-paper";
 import { BackHandler, Image, StyleSheet, View } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
 import * as Clipboard from 'expo-clipboard';
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppContext } from "../AppContext";
-import { useContext, useEffect } from "react";
-import Animated, { Extrapolation, interpolate, interpolateColor, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
+import { useContext, useEffect, useState } from "react";
+import Animated, { Easing, interpolateColor, runOnJS, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 
 export function About({ navigation, route }) {
     const theme = useTheme();
     const previous_screen = route.params.previous_screen;
     const { setActiveScreen } = useContext(AppContext);
 
-    function goBack() {
-        navigation.goBack();
-        setActiveScreen(previous_screen);
-        return true;
-    }
     const ScrollY = useSharedValue(0);
-    const AnimatedHeaderTitleStyle = useAnimatedStyle(() => ({
-        opacity: interpolate(
-            ScrollY.value,
-            [70, 100],
-            [0, 1],
-            Extrapolation.CLAMP
-        )
-    }))
+
     const AnimatedHeaderStyle = useAnimatedStyle(() => ({
         backgroundColor: interpolateColor(
             ScrollY.value,
@@ -34,86 +20,143 @@ export function About({ navigation, route }) {
         ),
         height: 90
     }))
-    const AnimatedTitleStyle = useAnimatedStyle(() => ({
-        opacity: interpolate(
-            ScrollY.value,
-            [0, 45],
-            [1, 0],
-            Extrapolation.CLAMP
-        ),
-        paddingTop: 30
-    }))
     const scrollHandler = useAnimatedScrollHandler((event) => {
         ScrollY.value = event.contentOffset.y;
     });
+    const [visible, setVisible] = useState(true)
+
+    function handleGoBack() {
+        setVisible(false)
+        return true;
+    }
+    const callbackF = () => {
+        navigation.goBack();
+        setActiveScreen(previous_screen);
+    }
+    const enteringAnim = () => {
+        'worklet';
+        const animations = {
+            transform: [
+                { scale: withTiming(1, { duration: 300, easing: Easing.bezier(0.05, 0.7, 0.1, 1) }) },
+                { translateY: withTiming(0, { duration: 300, easing: Easing.bezier(0.05, 0.7, 0.1, 1) }) }
+            ],
+            opacity: withTiming(1, { duration: 100 })
+        }
+        const initialValues = {
+            transform: [{ scale: 0.8 },
+            { translateY: 400 }],
+            opacity: 0
+        }
+        return {
+            initialValues,
+            animations
+        }
+    }
+    const exitingAnim = () => {
+        'worklet';
+        const animations = {
+            transform: [
+                { scale: withTiming(0.8, { duration: 250, easing: Easing.bezier(0.3, 0, 0.8, 0.15) }) },
+                { translateY: withTiming(300, { duration: 250, easing: Easing.bezier(0.3, 0, 0.8, 0.15) }) }
+            ],
+            opacity: withDelay(100, withTiming(0, { duration: 100 }))
+        }
+        const initialValues = {
+            transform: [{ scale: 1 },
+            { translateY: 0 }],
+            opacity: 1
+        }
+        const callback = (finished) => {
+            'worklet';
+            if (finished) {
+                runOnJS(callbackF)()
+            }
+        }
+        return {
+            initialValues,
+            animations,
+            callback
+        }
+    }
     useEffect(() => {
-        BackHandler.addEventListener('hardwareBackPress', goBack);
-        return () => BackHandler.removeEventListener('hardwareBackPress', goBack);
+        BackHandler.addEventListener('hardwareBackPress', handleGoBack);
+        return () => BackHandler.removeEventListener('hardwareBackPress', handleGoBack);
     }, []);
     return (
-        <Surface style={{ paddingTop: useSafeAreaInsets().top * 1.3, height: '100%' }}>
-            <Animated.View style={AnimatedHeaderStyle}>
-                <Appbar.Header style={{ backgroundColor: "transparent" }}>
-                    <Appbar.BackAction onPress={() => {
-                        setActiveScreen(previous_screen);
-                        navigation.goBack();
-                    }} />
-                    <Appbar.Content title={
-                        <Animated.View>
-                            <Text variant="titleLarge"
-                                numberOfLines={1}
-                                accessible
-                                accessibilityRole="header">About</Text>
-                        </Animated.View>
-                    } style={{ paddingLeft: 10 }} />
-                </Appbar.Header>
-            </Animated.View>
+        visible ?
+            <Animated.View entering={enteringAnim} exiting={exitingAnim}
+                style={{
+                    height: '100%', backgroundColor: theme.colors.elevation.level1
+                }}>
+                <Animated.View style={AnimatedHeaderStyle}>
+                    <Appbar.Header style={{ backgroundColor: "transparent" }}>
+                        <Appbar.BackAction onPress={() => {
+                            setVisible(false)
+                        }} />
+                        <Appbar.Content title={
+                            <Animated.View>
+                                <Text variant="titleLarge"
+                                    numberOfLines={1}
+                                    accessible
+                                    accessibilityRole="header">About</Text>
+                            </Animated.View>
+                        } style={{ paddingLeft: 10 }} />
+                    </Appbar.Header>
+                </Animated.View>
 
-            <Animated.ScrollView scrollEventThrottle={16}
-                onScroll={scrollHandler} contentContainerStyle={{}}>
-                <View style={{}}>
-                    <View style={{ flex: 1, alignItems: 'center', marginBottom: 30 }} >
-                        <Image source={require("../assets/Frame.png")} style={{ height: 200, width: 200 }} />
-                        <Text style={{ fontSize: 24, fontFamily: 'Lexend' }} >My Notes</Text>
-                        <Text style={{ fontSize: 17, fontFamily: 'Lexend' }} >version 1.3</Text>
+                <Animated.ScrollView scrollEventThrottle={16}
+                    onScroll={scrollHandler} contentContainerStyle={{}}>
+                    <View style={{}}>
+                        <View style={{ flex: 1, alignItems: 'center', marginVertical: 18 }} >
+                            <Image source={require("../assets/gicontrans.png")} style={{ height: 80, width: 80 }} />
+                            <Text style={{ fontSize: 30, fontFamily: 'Manrope' }} >My Notes</Text>
+                            <Text style={{ fontSize: 17, fontFamily: 'Manrope' }} >version 1.4.7</Text>
+                        </View>
+                        <List.Subheader>Developed By</List.Subheader>
+                        <List.Item title="Crystal" description="Developer and Designer" style={{ marginLeft: 20 }}
+                        />
+
                     </View>
-                    <List.Subheader>Developed By</List.Subheader>
-                    <List.Item title="Crystal" description="Developer and Designer" style={{ marginLeft: 20 }}
-                    />
 
-                </View>
-
-                <View style={{}}>
-                    <List.Subheader>Contact</List.Subheader>
-                    <List.Section>
-                        <List.Item title='crystalarcus@gmail.com'
-                            description="Email"
-                            left={() => <List.Icon icon='email-outline' />}
-                            right={() => <Button children="Copy" icon="content-copy" onPress={
-                                () => { Clipboard.setStringAsync("crystalarcus@gmail.com") }
-                            } />} style={{ marginLeft: 20 }} />
-                        {/* <Divider></Divider> */}
-                        <List.Item title='+91 9130082535' description="Phone"
-                            left={() => <List.Icon icon='phone-outline' />}
-                            right={() => <Button children="Copy" icon="content-copy" onPress={
-                                () => { Clipboard.setStringAsync("+91 9130082535") }
-                            } />} style={{ marginLeft: 20 }} />
-                        {/* <Divider></Divider> */}
-                        <List.Item title='+91 9130082535' description="WhatsApp"
-                            left={() => <List.Icon icon='whatsapp' />}
-                            right={() => <Button children="Copy" icon="content-copy" onPress={
-                                () => { Clipboard.setStringAsync("+91 9130082535") }
-                            } />} style={{ marginLeft: 20 }} />
-                        {/* <Divider></Divider> */}
-                        <List.Item title='crystal_arcus' description="Instagram"
-                            left={() => <List.Icon icon='instagram' />}
-                            right={() => <Button children="Copy" icon="content-copy" onPress={
-                                () => { Clipboard.setStringAsync("crystal_arcus") }
-                            } />} style={{ marginLeft: 20 }} />
-                    </List.Section>
-                </View>
-            </Animated.ScrollView>
-        </Surface>
+                    <View style={{}}>
+                        <List.Subheader>Contact</List.Subheader>
+                        <List.Section>
+                            <List.Item title='crystalarcus@gmail.com'
+                                titleStyle={styles.titleStyle}
+                                descriptionStyle={styles.titleStyle}
+                                description="Email"
+                                left={() => <List.Icon icon='email-outline' />}
+                                right={() => <Button children="Copy" icon="content-copy" onPress={
+                                    () => { Clipboard.setStringAsync("crystalarcus@gmail.com") }
+                                } />} style={{ marginLeft: 20 }} />
+                            {/* <Divider></Divider> */}
+                            <List.Item title='+91 9130082535' description="Phone"
+                                titleStyle={styles.titleStyle}
+                                descriptionStyle={styles.titleStyle}
+                                left={() => <List.Icon icon='phone-outline' />}
+                                right={() => <Button children="Copy" icon="content-copy" onPress={
+                                    () => { Clipboard.setStringAsync("+91 9130082535") }
+                                } />} style={{ marginLeft: 20 }} />
+                            {/* <Divider></Divider> */}
+                            <List.Item title='+91 9130082535' description="WhatsApp"
+                                titleStyle={styles.titleStyle}
+                                descriptionStyle={styles.titleStyle}
+                                left={() => <List.Icon icon='whatsapp' />}
+                                right={() => <Button children="Copy" icon="content-copy" onPress={
+                                    () => { Clipboard.setStringAsync("+91 9130082535") }
+                                } />} style={{ marginLeft: 20 }} />
+                            {/* <Divider></Divider> */}
+                            <List.Item title='crystal_arcus' description="Instagram"
+                                titleStyle={styles.titleStyle}
+                                descriptionStyle={styles.titleStyle}
+                                left={() => <List.Icon icon='instagram' />}
+                                right={() => <Button children="Copy" icon="content-copy" onPress={
+                                    () => { Clipboard.setStringAsync("crystal_arcus") }
+                                } />} style={{ marginLeft: 20 }} />
+                        </List.Section>
+                    </View>
+                </Animated.ScrollView>
+            </Animated.View> : null
 
     );
 }
@@ -136,5 +179,8 @@ const styles = StyleSheet.create({
     secondView: {
         flex: 1,
         gap: 20
+    },
+    titleStyle: {
+        fontFamily: 'Manrope'
     }
 });

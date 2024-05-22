@@ -14,13 +14,35 @@ bold title
 title and content seprate fontsize
 fontdialog change
 empty list comp update aesthetics
-------------------------complete-----------------------
 sorting alphabetically
-------------------------Working------------------------
-notes variable height - settings
+material you switch update bugs fix
 select multiple notes - notes screens
+-delete check selected
+-delete check direct
+-share check selected
+-share check direct
+settings color snack fade out bug
+bin screen : dialog before clearing bin
+drawer scroll border radius on right
+createnotescreen: bar animation faster
+home screen flatlist bottom leaves space when no listitems.
+exiting animations update 
+------------------------complete-----------------------
+merging groups notes
+cannot add 2 items in group
+NoteRenderItem, bottom padding when date and action button off
+searchNotes from groups add filter after navigation
+sort menu option to starred
+sort menu option to varableGroupsScreen
+------------------------Working------------------------
+add badge to drawer items
+groups settings:
+when group is deleted : remove group form notes, or remove notes which inlucdes groups
+set snack for theme
+notes variable height - settings
 Notifier on time - settings
 Date picker Bin - settings
 add drawing canvas in notes - createnote, notes
+
 
 
